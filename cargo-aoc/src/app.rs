@@ -41,9 +41,9 @@ pub fn execute_credentials(args: &Credentials) {
 /// Executes the "input" subcommand of the app
 pub fn execute_input(args: &Input) -> Result<(), Box<dyn Error>> {
     // Gets the token or exit if it's not referenced.
-    let token = CredentialsManager::new().get_session_token().expect(
-        "Error: you need to setup your AOC token using \"cargo aoc credentials {token}\"",
-    );
+    let token = CredentialsManager::new()
+        .get_session_token()
+        .expect("Error: you need to setup your AOC token using \"cargo aoc credentials {token}\"");
 
     let pm = ProjectManager::new()?;
 
@@ -58,7 +58,9 @@ pub fn execute_input(args: &Input) -> Result<(), Box<dyn Error>> {
             .year
             .expect("Need to specify a year to run cargo-aoc input --all");
         {
-            let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap();
             rt.block_on(async {
                 let client = reqwest::Client::builder()
                     .default_headers(headers)
@@ -106,6 +108,7 @@ pub fn execute_input(args: &Input) -> Result<(), Box<dyn Error>> {
     // Creates the AOCDate struct from the arguments (defaults to today...)
     let date: AOCDate = AOCDate::new(args);
     download_input(date)?;
+    download_puzzle(date)?;
 
     if generate {
         update_lib_rs(date.day, &pm)?;
@@ -159,18 +162,18 @@ async fn download_input_async(
     date: AOCDate,
     client: &reqwest::Client,
 ) -> Result<(), Box<dyn error::Error>> {
-    let filename = date.filename();
+    let filename = date.input_filename();
     let filename = Path::new(&filename);
 
     if filename.exists() {
         return Ok(());
     }
 
-    let response = client.get(date.request_url()).send().await?;
+    let response = client.get(date.input_request_url()).send().await?;
 
     match response.status() {
         StatusCode::OK => {
-            let dir = date.directory();
+            let dir = date.input_directory();
             // Creates the file-tree to store inputs
             // TODO: Maybe use crate's infos to get its root in the filesystem ?
             fs::create_dir_all(&dir)?;
@@ -196,7 +199,7 @@ async fn download_input_async(
 }
 
 fn download_input(date: AOCDate) -> Result<(), Box<dyn error::Error>> {
-    let filename = date.filename();
+    let filename = date.input_filename();
     let filename = Path::new(&filename);
 
     if filename.exists() {
@@ -210,14 +213,14 @@ fn download_input(date: AOCDate) -> Result<(), Box<dyn error::Error>> {
     let formated_token = format!("session={}", token);
 
     let response = client
-        .get(date.request_url())
+        .get(date.input_request_url())
         .header(USER_AGENT, CARGO_AOC_USER_AGENT)
         .header(COOKIE, formated_token)
         .send()?;
 
     match response.status() {
             StatusCode::OK => {
-                let dir = date.directory();
+                let dir = date.input_directory();
                 // Creates the file-tree to store inputs
                 // TODO: Maybe use crate's infos to get its root in the filesystem ?
                 fs::create_dir_all(dir)?;
@@ -232,6 +235,41 @@ fn download_input(date: AOCDate) -> Result<(), Box<dyn error::Error>> {
                  Message: {}", sc, response.text().unwrap_or_else(|_| String::new())
             ).into()),
         }
+
+    Ok(())
+}
+
+fn download_puzzle(date: AOCDate) -> Result<(), Box<dyn error::Error>> {
+    let filename = date.puzzle_filename();
+    let filename = Path::new(&filename);
+
+    let token = CredentialsManager::new().get_session_token()?;
+    let client = reqwest::blocking::Client::new();
+    let response = client
+        .get(date.puzzle_request_url())
+        .header(USER_AGENT, CARGO_AOC_USER_AGENT)
+        .header(COOKIE, format!("session={token}"))
+        .send()?;
+
+    if response.status() != StatusCode::OK {
+        return Err(format!("Error requesting the puzzle ({date})").into());
+    }
+
+    let puzzle_html = regex::Regex::new(r"(?i)(?s)<main>(?P<main>.*)</main>")
+        .unwrap()
+        .captures(&response.text()?)
+        .unwrap()
+        .name("main")
+        .unwrap()
+        .as_str()
+        .to_string();
+
+    let puzzle_markdown = html2md::parse_html(&puzzle_html);
+
+    let dir = date.puzzle_directory();
+    fs::create_dir_all(dir)?;
+    let mut file = File::create(filename)?;
+    file.write_all(puzzle_markdown.as_bytes())?;
 
     Ok(())
 }
@@ -310,6 +348,7 @@ pub fn execute_default(args: &Cli) -> Result<(), Box<dyn error::Error>> {
     }
 
     download_input(date)?;
+    download_puzzle(date)?;
 
     let main_content = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

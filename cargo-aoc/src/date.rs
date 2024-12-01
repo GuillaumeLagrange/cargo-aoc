@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 use chrono_tz::EST;
+use std::fmt;
 
 use crate::Input;
 
@@ -27,19 +28,38 @@ impl AOCDate {
         AOCDate { day, year }
     }
 
-    pub fn directory(&self) -> String {
+    pub fn input_directory(&self) -> String {
         format!("input/{}", self.year)
     }
 
-    pub fn filename(&self) -> String {
-        format!("input/{}/day{}.txt", self.year, self.day)
+    pub fn input_filename(&self) -> String {
+        format!("{}/day{}.txt", self.input_directory(), self.day)
     }
 
-    /// Consumes the date to get an URL
-    pub fn request_url(&self) -> String {
+    /// Get the url to request the input for the date
+    pub fn input_request_url(&self) -> String {
         format!(
             "https://adventofcode.com/{}/day/{}/input",
             self.year, self.day
         )
+    }
+
+    pub fn puzzle_directory(&self) -> String {
+        format!("puzzles/{}", self.year)
+    }
+
+    pub fn puzzle_filename(&self) -> String {
+        format!("{}/day{}.md", self.puzzle_directory(), self.day)
+    }
+
+    /// Get the url to request the puzzle for the date
+    pub fn puzzle_request_url(&self) -> String {
+        format!("https://adventofcode.com/{}/day/{}", self.year, self.day)
+    }
+}
+
+impl fmt::Display for AOCDate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Day {} of {}", self.day, self.year)
     }
 }
