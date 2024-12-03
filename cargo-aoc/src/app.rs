@@ -100,6 +100,12 @@ pub fn execute_input(args: &Input) -> Result<(), Box<dyn Error>> {
                     let _ =
                         update_lib_rs(i, &pm).map_err(|e| eprintln!("Couldn't update lib.rs: {e}"));
                 }
+                process::Command::new("cargo")
+                    .args(["fmt"])
+                    .spawn()
+                    .expect("Failed to run cargo fmt")
+                    .wait()
+                    .expect("Failed to wait for cargo fmt");
             });
         };
         return Ok(());
@@ -113,6 +119,12 @@ pub fn execute_input(args: &Input) -> Result<(), Box<dyn Error>> {
     if generate {
         update_lib_rs(date.day, &pm)?;
         codegen(date.day, &pm)?;
+        process::Command::new("cargo")
+            .args(["fmt"])
+            .spawn()
+            .expect("Failed to run cargo fmt")
+            .wait()
+            .expect("Failed to wait for cargo fmt");
         println!("Successfully generated boilerplate for {}", date.day);
     }
     Ok(())
@@ -126,7 +138,7 @@ fn update_lib_rs(day: u32, pm: &ProjectManager) -> Result<(), Box<dyn Error>> {
 
     let lib_rs = fs::read_to_string(lib_rs_path)?;
 
-    let str = format!("mod day{day};");
+    let str = format!("pub mod day{day};");
     if !lib_rs.contains(&str) {
         let lib_rs = format!("{str}\n{lib_rs}");
         fs::write(lib_rs_path, lib_rs)?;
@@ -293,6 +305,12 @@ pub fn execute_default(args: &Cli) -> Result<(), Box<dyn error::Error>> {
     if args.generate {
         update_lib_rs(date.day, &pm)?;
         codegen(date.day, &pm)?;
+        process::Command::new("cargo")
+            .args(["fmt"])
+            .spawn()
+            .expect("Failed to run cargo fmt")
+            .wait()
+            .expect("Failed to wait for cargo fmt");
         println!("Successfully generated boilerplate for {}", date.day);
         // Rebuild to include newly generated day
         day_parts = pm.build_project()?;

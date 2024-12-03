@@ -2,8 +2,8 @@ mod app;
 mod args;
 mod credentials;
 mod date;
-mod project;
 mod errors;
+mod project;
 
 use aoc_runner_internal::{Day, Part};
 use app::{execute_bench, execute_credentials, execute_default, execute_input};
